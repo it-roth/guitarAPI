@@ -21,8 +21,11 @@ public class Users {
     @Column(name = "id")
     int id;
 
-    @Column(name = "name")
-    String name;
+    @Column(name = "first_name")
+    String firstName;
+
+    @Column(name = "last_name")
+    String lastName;
 
     @Column(name = "gender")
     char gender;
@@ -38,5 +41,14 @@ public class Users {
     
     @Column(name = "token", nullable = true)
     String token;
+
+    @Column(name = "role", nullable = true)
+    String role;
+
+    @Column(name = "created_at", nullable = true)
+    String createdAt;
+
+    @Column(name = "updated_at", nullable = true)
+    String updatedAt;
 
 }

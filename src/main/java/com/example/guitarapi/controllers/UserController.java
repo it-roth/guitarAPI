@@ -45,11 +45,13 @@ public class UserController {
 
     @RequestMapping(path = "/users", method = RequestMethod.POST)
     public String createUser(
-            @RequestParam("name") String name,
-            @RequestParam("password") String password,
-            @RequestParam("email") String email,
-            @RequestParam("gender") char gender,
-            @RequestParam("images") MultipartFile images) {
+        @RequestParam("first_name") String firstName,
+        @RequestParam("last_name") String lastName,
+        @RequestParam("password") String password,
+        @RequestParam("email") String email,
+        @RequestParam("gender") char gender,
+        @RequestParam(value = "role", required = false) String role,
+        @RequestParam("images") MultipartFile images) {
 
          try {
              // Set upload directory
@@ -62,8 +64,10 @@ public class UserController {
              String imageFileName = images.getOriginalFilename();
              Path target = uploadDir.resolve(imageFileName);
              images.transferTo(target.toFile());
+             // Get current timestamp
+             String currentTime = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
              // Save user with image filename
-             Users newObj = new Users(0, name, gender, email, password, imageFileName, null);
+             Users newObj = new Users(0, firstName, lastName, gender, email, password, imageFileName, null, role, currentTime, currentTime);
              this.users.save(newObj);
              return "Inserted Successfully!";
          } catch (Exception e) {
@@ -75,17 +79,21 @@ public class UserController {
     @RequestMapping(path = "/users/{id}", method = RequestMethod.PUT)
     public String updateUser(
             @PathVariable int id,
-            @RequestParam("name") String name,
-            @RequestParam("password") String password,
-            @RequestParam("email") String email,
-            @RequestParam("gender") String gender,
-            @RequestParam(value = "images", required = false) MultipartFile images) {
+        @RequestParam("first_name") String firstName,
+        @RequestParam("last_name") String lastName,
+        @RequestParam("password") String password,
+        @RequestParam("email") String email,
+        @RequestParam("gender") String gender,
+        @RequestParam(value = "role", required = false) String role,
+        @RequestParam(value = "images", required = false) MultipartFile images) {
 
         return this.users.findById(id).map((item) -> {
-            item.setName(name);
+            item.setFirstName(firstName);
+            item.setLastName(lastName);
             item.setGender(gender.charAt(0));
             item.setEmail(email);
             item.setPassword(password);
+            if (role != null) item.setRole(role);
 
             if (images != null && !images.isEmpty()) {
                 try {
@@ -102,6 +110,10 @@ public class UserController {
                     return "Failed to update image!";
                 }
             }
+
+            // Update timestamp
+            String currentTime = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            item.setUpdatedAt(currentTime);
 
             this.users.save(item);
             return "Updated Successfully!";

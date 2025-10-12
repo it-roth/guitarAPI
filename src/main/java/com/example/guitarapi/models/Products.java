@@ -33,7 +33,7 @@ public class Products {
     @Column(name = "description")
     private String description;
 
-    @Column(name = "image_url")
+    @Column(name = "images")
     private String images;
 
     @Column(name = "name")
