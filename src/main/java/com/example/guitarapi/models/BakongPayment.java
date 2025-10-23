@@ -2,17 +2,19 @@ package com.example.guitarapi.models;
 
 import jakarta.persistence.*;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 @Entity
+@Table(name = "bakong_payment")
 public class BakongPayment {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
     private String currency;  // KHR or USD
-    private Double amount;
+    private BigDecimal amount;
     private String qrString;
-    
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id")
@@ -23,9 +25,10 @@ public class BakongPayment {
     private String transactionRef;
 
     @Column(name = "created_at")
-    private String createdAt;
+    private LocalDateTime createdAt;
 
-    
+    @Column(name = "status")
+    private String status; // pending, success, failed
 
     public BakongPayment() {}
 
@@ -45,11 +48,11 @@ public class BakongPayment {
         this.currency = currency;
     }
 
-    public Double getAmount() {
+    public BigDecimal getAmount() {
         return amount;
     }
 
-    public void setAmount(Double amount) {
+    public void setAmount(BigDecimal amount) {
         this.amount = amount;
     }
 
@@ -69,11 +72,11 @@ public class BakongPayment {
         this.transactionRef = transactionRef;
     }
 
-    public String getCreatedAt() {
+    public LocalDateTime getCreatedAt() {
         return createdAt;
     }
 
-    public void setCreatedAt(String createdAt) {
+    public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
     }
 
@@ -83,5 +86,13 @@ public class BakongPayment {
 
     public void setOrder(Orders order) {
         this.order = order;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 }

@@ -198,6 +198,65 @@ public class KHQRGenerator {
             throw new RuntimeException("Failed to generate deep link", e);
         }
     }
+
+    /**
+     * Generate a deep link by first creating a Merchant KHQR and then requesting
+     * the deep link for that merchant QR. This ensures the deep link corresponds
+     * to the merchant generation flow.
+     *
+     * @param amount the transaction amount
+     * @param currency the currency code (USD or KHR)
+     * @return the generated deep link (short link) or null if generation fails
+     */
+    public String generateDeepLinkFromMerchant(Double amount, String currency) {
+        try {
+            // First generate a Merchant KHQR using the same data as generateMerchantKHQR
+            MerchantInfo merchantInfo = new MerchantInfo();
+            merchantInfo.setBakongAccountId(BAKONG_ACCOUNT);
+            merchantInfo.setMerchantId("PICKPLAY001");
+            merchantInfo.setAcquiringBank(MERCHANT_BANK);
+            merchantInfo.setMerchantName(MERCHANT_NAME);
+            merchantInfo.setMerchantCity(MERCHANT_CITY);
+            merchantInfo.setCurrency(KHQRCurrency.valueOf(currency));
+            merchantInfo.setAmount(amount);
+            merchantInfo.setStoreLabel(STORE_LABEL);
+            merchantInfo.setTerminalLabel(TERMINAL_LABEL);
+            if (!MOBILE_NUMBER.isEmpty()) {
+                merchantInfo.setMobileNumber(MOBILE_NUMBER);
+            }
+
+            KHQRResponse<KHQRData> merchantResp = BakongKHQR.generateMerchant(merchantInfo);
+            if (merchantResp == null || merchantResp.getKHQRStatus().getCode() != 0) {
+                String error = merchantResp != null ? merchantResp.getKHQRStatus().getMessage() : "Unknown error";
+                logger.error("Failed to generate Merchant KHQR for deep link: {}", error);
+                return null;
+            }
+
+            String merchantQr = merchantResp.getData().getQr();
+            logger.info("Generated merchant QR for deep link: {}", merchantQr);
+
+            // Now request the deep link for that merchant QR
+            String url = "https://bakong.nbc.gov.kh/api/v1/generate_deeplink_by_qr";
+            SourceInfo sourceInfo = new SourceInfo();
+            sourceInfo.setAppName("Pick And Play");
+            sourceInfo.setAppIconUrl("https://picknplay.app/icon.png");
+            sourceInfo.setAppDeepLinkCallback(this.appDeepLinkCallback);
+
+            KHQRResponse<KHQRDeepLinkData> dlResp = BakongKHQR.generateDeepLink(url, merchantQr, sourceInfo);
+            if (dlResp != null && dlResp.getKHQRStatus().getCode() == 0) {
+                String deepLink = dlResp.getData().getShortLink();
+                logger.info("Generated deep link from merchant flow: {}", deepLink);
+                return deepLink;
+            } else {
+                String error = dlResp != null ? dlResp.getKHQRStatus().getMessage() : "Unknown error";
+                logger.warn("Failed to generate deep link from merchant flow: {}", error);
+                return null;
+            }
+        } catch (Exception e) {
+            logger.error("Error generating deep link from merchant flow: {}", e.getMessage());
+            return null;
+        }
+    }
     
     /**
      * Generates a QR code image from the given KHQR string

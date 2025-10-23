@@ -7,5 +7,5 @@ import com.example.guitarapi.models.Orders;
 
 @Repository
 public interface OrderRepo extends JpaRepository<Orders, Integer> {
-    
+	java.util.List<Orders> findByUserId(int userId);
 }

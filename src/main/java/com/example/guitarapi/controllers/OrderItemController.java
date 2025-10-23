@@ -51,7 +51,7 @@ public class OrderItemController {
              double totalPrice = quantity * unitPrice;
              
              // Save order item
-             OrderItems newOrderItem = new OrderItems(0, quantity, totalPrice, unitPrice, orderId, productId);
+             OrderItems newOrderItem = new OrderItems(0, quantity, new java.math.BigDecimal(Double.toString(totalPrice)), new java.math.BigDecimal(Double.toString(unitPrice)), orderId, productId);
              this.orderItems.save(newOrderItem);
              return "Order Item Inserted Successfully!";
          } catch (Exception e) {
@@ -70,12 +70,12 @@ public class OrderItemController {
 
         return this.orderItems.findById(id).map((item) -> {
             item.setQuantity(quantity);
-            item.setUnitPrice(unitPrice);
+            item.setUnitPrice(new java.math.BigDecimal(Double.toString(unitPrice)));
             item.setOrderId(orderId);
             item.setProductId(productId);
             
             // Recalculate total price
-            double totalPrice = quantity * unitPrice;
+            java.math.BigDecimal totalPrice = new java.math.BigDecimal(Double.toString(unitPrice)).multiply(java.math.BigDecimal.valueOf(quantity));
             item.setTotalPrice(totalPrice);
 
             this.orderItems.save(item);

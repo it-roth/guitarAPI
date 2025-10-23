@@ -13,6 +13,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.CascadeType;
 import java.util.List;
+import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 @Entity
 @Table(name = "orders_tbl")
@@ -20,7 +22,7 @@ public class Orders {
     
     public Orders() {}
     
-    public Orders(int id, String createdAt, String customerName, String shippingAddress, String status, double totalAmount, String updatedAt, int userId) {
+    public Orders(int id, LocalDateTime createdAt, String customerName, String shippingAddress, String status, BigDecimal totalAmount, LocalDateTime updatedAt, int userId) {
         this.id = id;
         this.createdAt = createdAt;
         this.customerName = customerName;
@@ -36,7 +38,7 @@ public class Orders {
     private int id;
 
     @Column(name = "created_at")
-    private String createdAt;
+    private LocalDateTime createdAt;
 
     @Column(name = "customer_name")
     private String customerName;
@@ -48,10 +50,13 @@ public class Orders {
     private String status;
 
     @Column(name = "total_amount")
-    private double totalAmount;
+    private BigDecimal totalAmount;
 
     @Column(name = "updated_at")
-    private String updatedAt;
+    private LocalDateTime updatedAt;
+
+    @Column(name = "payment_status")
+    private String paymentStatus; // e.g. pending, partial, paid, failed
 
     @Column(name = "user_id")
     private int userId;
@@ -64,7 +69,6 @@ public class Orders {
 
     // One-to-many relationship to order items
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @JsonIgnore
     private List<OrderItems> items;
 
     // One-to-one relationship to BakongPayment (if any)
@@ -80,11 +84,11 @@ public class Orders {
         this.id = id;
     }
 
-    public String getCreatedAt() {
+    public LocalDateTime getCreatedAt() {
         return createdAt;
     }
 
-    public void setCreatedAt(String createdAt) {
+    public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
     }
 
@@ -112,20 +116,28 @@ public class Orders {
         this.status = status;
     }
 
-    public double getTotalAmount() {
+    public BigDecimal getTotalAmount() {
         return totalAmount;
     }
 
-    public void setTotalAmount(double totalAmount) {
+    public void setTotalAmount(BigDecimal totalAmount) {
         this.totalAmount = totalAmount;
     }
 
-    public String getUpdatedAt() {
+    public LocalDateTime getUpdatedAt() {
         return updatedAt;
     }
 
-    public void setUpdatedAt(String updatedAt) {
+    public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public String getPaymentStatus() {
+        return paymentStatus;
+    }
+
+    public void setPaymentStatus(String paymentStatus) {
+        this.paymentStatus = paymentStatus;
     }
 
     public int getUserId() {
@@ -158,5 +170,10 @@ public class Orders {
 
     public void setBakongPayment(com.example.guitarapi.models.BakongPayment bakongPayment) {
         this.bakongPayment = bakongPayment;
+    }
+
+    // For convenience, get totalAmount as double when needed (avoid using for persistence)
+    public double getTotalAmountAsDouble() {
+        return this.totalAmount == null ? 0.0 : this.totalAmount.doubleValue();
     }
 }

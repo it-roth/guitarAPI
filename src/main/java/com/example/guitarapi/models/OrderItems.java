@@ -10,6 +10,7 @@ import jakarta.persistence.ManyToOne;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.FetchType;
+import java.math.BigDecimal;
 
 @Entity
 @Table(name = "order_items_tbl")
@@ -17,7 +18,7 @@ public class OrderItems {
     
     public OrderItems() {}
     
-    public OrderItems(int id, int quantity, double totalPrice, double unitPrice, int orderId, int productId) {
+    public OrderItems(int id, int quantity, BigDecimal totalPrice, BigDecimal unitPrice, int orderId, int productId) {
         this.id = id;
         this.quantity = quantity;
         this.totalPrice = totalPrice;
@@ -34,10 +35,10 @@ public class OrderItems {
     private int quantity;
 
     @Column(name = "total_price")
-    private double totalPrice;
+    private BigDecimal totalPrice;
 
     @Column(name = "unit_price")
-    private double unitPrice;
+    private BigDecimal unitPrice;
 
     @Column(name = "order_id")
     private int orderId;
@@ -71,19 +72,19 @@ public class OrderItems {
         this.quantity = quantity;
     }
 
-    public double getTotalPrice() {
+    public BigDecimal getTotalPrice() {
         return totalPrice;
     }
 
-    public void setTotalPrice(double totalPrice) {
+    public void setTotalPrice(BigDecimal totalPrice) {
         this.totalPrice = totalPrice;
     }
 
-    public double getUnitPrice() {
+    public BigDecimal getUnitPrice() {
         return unitPrice;
     }
 
-    public void setUnitPrice(double unitPrice) {
+    public void setUnitPrice(BigDecimal unitPrice) {
         this.unitPrice = unitPrice;
     }
 

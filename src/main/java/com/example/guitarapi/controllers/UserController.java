@@ -83,40 +83,50 @@ public class UserController {
         @RequestParam("last_name") String lastName,
         @RequestParam("password") String password,
         @RequestParam("email") String email,
-        @RequestParam("gender") String gender,
+        @RequestParam(value = "gender", required = false) String gender,
         @RequestParam(value = "role", required = false) String role,
         @RequestParam(value = "images", required = false) MultipartFile images) {
 
-        return this.users.findById(id).map((item) -> {
-            item.setFirstName(firstName);
-            item.setLastName(lastName);
-            item.setGender(gender.charAt(0));
-            item.setEmail(email);
-            item.setPassword(password);
-            if (role != null) item.setRole(role);
-
-            if (images != null && !images.isEmpty()) {
-                try {
-                    Path uploadDir = Paths.get(System.getProperty("user.dir"), "uploads");
-                    if (!Files.exists(uploadDir)) {
-                        Files.createDirectories(uploadDir);
-                    }
-                    String imageFileName = images.getOriginalFilename();
-                    Path target = uploadDir.resolve(imageFileName);
-                    images.transferTo(target.toFile());
-                    item.setImages(imageFileName);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    return "Failed to update image!";
+        try {
+            return this.users.findById(id).map((item) -> {
+                item.setFirstName(firstName);
+                item.setLastName(lastName);
+                if (gender != null && !gender.isEmpty()) {
+                    item.setGender(gender.charAt(0));
                 }
-            }
+                item.setEmail(email);
+                // Only update the password if a non-empty value was provided
+                if (password != null && !password.isEmpty()) {
+                    item.setPassword(password);
+                }
+                if (role != null) item.setRole(role);
 
-            // Update timestamp
-            String currentTime = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-            item.setUpdatedAt(currentTime);
+                if (images != null && !images.isEmpty()) {
+                    try {
+                        Path uploadDir = Paths.get(System.getProperty("user.dir"), "uploads");
+                        if (!Files.exists(uploadDir)) {
+                            Files.createDirectories(uploadDir);
+                        }
+                        String imageFileName = images.getOriginalFilename();
+                        Path target = uploadDir.resolve(imageFileName);
+                        images.transferTo(target.toFile());
+                        item.setImages(imageFileName);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        return "Failed to update image: " + e.getMessage();
+                    }
+                }
 
-            this.users.save(item);
-            return "Updated Successfully!";
-        }).orElse("User not found!");
+                // Update timestamp
+                String currentTime = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                item.setUpdatedAt(currentTime);
+
+                this.users.save(item);
+                return "Updated Successfully!";
+            }).orElse("User not found!");
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            return "Failed to update user: " + ex.getMessage();
+        }
     }
 }

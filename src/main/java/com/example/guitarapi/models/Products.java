@@ -10,6 +10,8 @@ import jakarta.persistence.OneToMany;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.util.List;
 import jakarta.persistence.FetchType;
+import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 @Entity
 @Table(name = "products_tbl")
@@ -17,7 +19,7 @@ public class Products {
     
     public Products() {}
     
-    public Products(int id, String brand, String category, String createdAt, String description, String images, String name, double price, int stockQuantity, String updatedAt) {
+    public Products(int id, String brand, String category, LocalDateTime createdAt, String description, String images, String name, BigDecimal price, int stockQuantity, LocalDateTime updatedAt) {
         this.id = id;
         this.brand = brand;
         this.category = category;
@@ -41,7 +43,7 @@ public class Products {
     private String category;
 
     @Column(name = "created_at")
-    private String createdAt;
+    private LocalDateTime createdAt;
 
     @Column(name = "description")
     private String description;
@@ -53,13 +55,13 @@ public class Products {
     private String name;
 
     @Column(name = "price")
-    private double price;
+    private BigDecimal price;
 
     @Column(name = "stock_quantity")
     private int stockQuantity;
 
     @Column(name = "updated_at")
-    private String updatedAt;
+    private LocalDateTime updatedAt;
 
     @OneToMany(mappedBy = "product", fetch = FetchType.LAZY)
     @JsonIgnore
@@ -89,11 +91,11 @@ public class Products {
         this.category = category;
     }
 
-    public String getCreatedAt() {
+    public LocalDateTime getCreatedAt() {
         return createdAt;
     }
 
-    public void setCreatedAt(String createdAt) {
+    public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
     }
 
@@ -121,11 +123,11 @@ public class Products {
         this.name = name;
     }
 
-    public double getPrice() {
+    public BigDecimal getPrice() {
         return price;
     }
 
-    public void setPrice(double price) {
+    public void setPrice(BigDecimal price) {
         this.price = price;
     }
 
@@ -137,11 +139,11 @@ public class Products {
         this.stockQuantity = stockQuantity;
     }
 
-    public String getUpdatedAt() {
+    public LocalDateTime getUpdatedAt() {
         return updatedAt;
     }
 
-    public void setUpdatedAt(String updatedAt) {
+    public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
     }
 
