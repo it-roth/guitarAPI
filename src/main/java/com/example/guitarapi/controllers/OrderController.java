@@ -12,6 +12,7 @@ import com.example.guitarapi.models.Orders;
 import com.example.guitarapi.models.OrderItems;
 import com.example.guitarapi.models.Products;
 import com.example.guitarapi.repository.OrderItemRepo;
+import com.example.guitarapi.repository.ProductRepo;
 import com.example.guitarapi.services.KHQRGenerator;
 import com.example.guitarapi.models.BakongPayment;
 import com.example.guitarapi.repository.BakongPaymentRepo;
@@ -42,14 +43,16 @@ public class OrderController {
     private static final Logger logger = LoggerFactory.getLogger(OrderController.class);
 
     private OrderRepo orders;
+    private ProductRepo productRepo;
     private KHQRGenerator khqrGenerator;
     private OrderItemRepo orderItemRepo;
     private BakongPaymentRepo bakongPaymentRepo;
     private PaymentEventService paymentEventService;
     private UserRepo userRepo;
 
-    public OrderController(OrderRepo orders, OrderItemRepo orderItemRepo, KHQRGenerator khqrGenerator, BakongPaymentRepo bakongPaymentRepo, PaymentEventService paymentEventService, UserRepo userRepo) {
+    public OrderController(OrderRepo orders, ProductRepo productRepo, OrderItemRepo orderItemRepo, KHQRGenerator khqrGenerator, BakongPaymentRepo bakongPaymentRepo, PaymentEventService paymentEventService, UserRepo userRepo) {
         this.orders = orders;
+        this.productRepo = productRepo;
         this.orderItemRepo = orderItemRepo;
         this.khqrGenerator = khqrGenerator;
         this.bakongPaymentRepo = bakongPaymentRepo;
@@ -220,7 +223,8 @@ public class OrderController {
                     
                     enrichedItems.add(itemData);
                 }
-                orderData.put("orderItems", enrichedItems);
+                orderData.put("items", enrichedItems);
+                orderData.put("orderItems", enrichedItems); // Keep both for backward compatibility
                 enrichedOrders.add(orderData);
             }
             
@@ -318,6 +322,7 @@ public class OrderController {
         }
 
     @RequestMapping(path = "/orders", method = RequestMethod.POST)
+    @Transactional
     public ResponseEntity<Map<String, Object>> createOrder(@RequestBody Map<String, Object> orderData, @RequestHeader(value = "Authorization", required = false) String auth) {
         try {
             // Get current timestamp
@@ -369,11 +374,49 @@ public class OrderController {
             if (orderData.get("items") instanceof List) {
                 @SuppressWarnings("unchecked")
                 List<Map<String, Object>> items = (List<Map<String, Object>>) orderData.get("items");
+                // Validate stock for all items first
+                for (Map<String, Object> it : items) {
+                    int productId = it.get("productId") != null ? Integer.parseInt(it.get("productId").toString()) : 0;
+                    int quantity = it.get("quantity") != null ? Integer.parseInt(it.get("quantity").toString()) : 0;
+                    if (productId <= 0) {
+                        return ResponseEntity.badRequest().body(Map.of("status", "error", "message", "Invalid productId in items"));
+                    }
+                    if (quantity <= 0) {
+                        return ResponseEntity.badRequest().body(Map.of("status", "error", "message", "Invalid quantity for productId=" + productId));
+                    }
+                    Products product = this.productRepo.findById(productId).orElse(null);
+                    if (product == null) {
+                        return ResponseEntity.badRequest().body(Map.of("status", "error", "message", "Product not found: id=" + productId));
+                    }
+                    if (product.getStockQuantity() < quantity) {
+                        String productName = product.getName() != null ? product.getName() : "Product id=" + productId;
+                        if (product.getStockQuantity() == 0) {
+                            return ResponseEntity.badRequest().body(Map.of("status", "error", "message", productName + " is out of stock"));
+                        } else {
+                            return ResponseEntity.badRequest().body(Map.of("status", "error", "message", "Insufficient stock for " + productName + ". Only " + product.getStockQuantity() + " available"));
+                        }
+                    }
+                }
+
+                // All items validated; persist items and decrement stock
                 for (Map<String, Object> it : items) {
                     int productId = it.get("productId") != null ? Integer.parseInt(it.get("productId").toString()) : 0;
                     int quantity = it.get("quantity") != null ? Integer.parseInt(it.get("quantity").toString()) : 0;
                     java.math.BigDecimal unitPrice = it.get("unitPrice") != null ? new java.math.BigDecimal(it.get("unitPrice").toString()) : java.math.BigDecimal.ZERO;
                     java.math.BigDecimal totalPrice = unitPrice.multiply(java.math.BigDecimal.valueOf(quantity));
+
+                    // Decrement product stock and save BEFORE creating order items
+                    Products product = this.productRepo.findById(productId).orElse(null);
+                    if (product != null) {
+                        int oldStock = product.getStockQuantity();
+                        int newStock = Math.max(0, oldStock - quantity);
+                        product.setStockQuantity(newStock);
+                        Products savedProduct = this.productRepo.save(product);
+                        logger.info("Decremented stock for product id={} : {} -> {} (saved: {})", productId, oldStock, newStock, savedProduct.getStockQuantity());
+                    } else {
+                        logger.warn("createOrder: attempted to decrement stock for missing product id={}", productId);
+                    }
+
                     OrderItems newOrderItem = new OrderItems(0, quantity, totalPrice, unitPrice, savedOrder.getId(), productId);
                     orderItemRepo.save(newOrderItem);
                 }
