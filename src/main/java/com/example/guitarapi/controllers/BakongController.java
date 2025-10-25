@@ -63,10 +63,7 @@ public class BakongController {
             headers.setContentType(MediaType.IMAGE_PNG);
             headers.setCacheControl("no-cache");
             
-            // Do NOT persist a BakongPayment here. QR generation is separate from actual payment confirmation.
-            // Persist a lightweight pending BakongPayment when orderId is present.
-            // This makes it visible in payment status calls so the frontend shows a pending payment
-            // while waiting for the bank callback which will contain the final transactionRef.
+
             if (orderId != null) {
                 logger.info("Generated QR for orderId={} (persisting pending payment)", orderId);
                 try {
