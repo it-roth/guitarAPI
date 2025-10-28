@@ -4,6 +4,8 @@ import com.example.guitarapi.models.Users;
 import com.example.guitarapi.repository.UserRepo;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -14,14 +16,17 @@ import java.util.UUID;
 @RequestMapping("/api")
 public class AuthController {
 
+    private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
     private final UserRepo userRepo;
 
     public AuthController(UserRepo userRepo) {
         this.userRepo = userRepo;
     }
 
-    // Simple credential-based login. Expects JSON { "email": "..", "password": ".." }
-    // On success sets a random token on the user record and returns a small user object + token.
+    // Simple credential-based login. Expects JSON { "email": "..", "password": ".."
+    // }
+    // On success sets a random token on the user record and returns a small user
+    // object + token.
     @PostMapping(path = "/login")
     public ResponseEntity<?> login(@RequestBody Map<String, String> body) {
         String email = body.get("email");
@@ -56,24 +61,24 @@ public class AuthController {
     @PostMapping(path = "/register")
     public ResponseEntity<?> register(@RequestBody Map<String, String> body) {
         // Debug log incoming body to help diagnose missing fields
-        System.out.println("[AuthController.register] Received body: " + body);
+        logger.debug("AuthController.register - Received body: {}", body);
         String firstName = body.get("firstName");
         String lastName = body.get("lastName");
         String email = body.get("email");
         String password = body.get("password");
         String genderStr = body.get("gender");
-        
+
         // Validate required fields
         if (firstName == null || lastName == null || email == null || password == null || genderStr == null) {
             return ResponseEntity.badRequest().body(Map.of("error", "missing_required_fields"));
         }
-        
+
         // Check if email already exists
         Users existingUser = this.userRepo.findByEmail(email);
         if (existingUser != null) {
             return ResponseEntity.badRequest().body(Map.of("error", "email_already_exists"));
         }
-        
+
         // Convert gender string to char
         char gender;
         try {
@@ -81,7 +86,7 @@ public class AuthController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", "invalid_gender"));
         }
-        
+
         // Create new user with default role "users"
         Users newUser = new Users();
         newUser.setFirstName(firstName);
@@ -90,15 +95,15 @@ public class AuthController {
         newUser.setPassword(password);
         newUser.setGender(gender);
         newUser.setRole("users"); // Default role for all registrations
-        
+
         // Generate token for immediate login
         String token = UUID.randomUUID().toString();
         newUser.setToken(token);
-        
+
         // Save user to database
         try {
             Users savedUser = this.userRepo.save(newUser);
-            
+
             // Return user data (similar to login response)
             Map<String, Object> respUser = new HashMap<>();
             respUser.put("id", savedUser.getId());
@@ -108,7 +113,7 @@ public class AuthController {
             respUser.put("role", savedUser.getRole());
             respUser.put("images", savedUser.getImages());
             respUser.put("token", token);
-            
+
             return ResponseEntity.ok(Map.of("status", "success", "data", respUser));
         } catch (Exception e) {
             return ResponseEntity.status(500).body(Map.of("error", "registration_failed", "message", e.getMessage()));

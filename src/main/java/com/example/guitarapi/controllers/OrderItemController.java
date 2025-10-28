@@ -11,12 +11,15 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api")
 public class OrderItemController {
 
+    private static final Logger logger = LoggerFactory.getLogger(OrderItemController.class);
     private OrderItemRepo orderItems;
 
     public OrderItemController(OrderItemRepo orderItems) {
@@ -46,18 +49,19 @@ public class OrderItemController {
             @RequestParam("order_id") int orderId,
             @RequestParam("product_id") int productId) {
 
-         try {
-             // Calculate total price
-             double totalPrice = quantity * unitPrice;
-             
-             // Save order item
-             OrderItems newOrderItem = new OrderItems(0, quantity, new java.math.BigDecimal(Double.toString(totalPrice)), new java.math.BigDecimal(Double.toString(unitPrice)), orderId, productId);
-             this.orderItems.save(newOrderItem);
-             return "Order Item Inserted Successfully!";
-         } catch (Exception e) {
-             e.printStackTrace();
-             return "Failed to Insert Order Item!";
-         }
+        try {
+            // Calculate total price
+            double totalPrice = quantity * unitPrice;
+
+            // Save order item
+            OrderItems newOrderItem = new OrderItems(0, quantity, new java.math.BigDecimal(Double.toString(totalPrice)),
+                    new java.math.BigDecimal(Double.toString(unitPrice)), orderId, productId);
+            this.orderItems.save(newOrderItem);
+            return "Order Item Inserted Successfully!";
+        } catch (Exception e) {
+            logger.error("Failed to insert order item", e);
+            return "Failed to Insert Order Item!";
+        }
     }
 
     @RequestMapping(path = "/order-items/{id}", method = RequestMethod.PUT)
@@ -73,9 +77,10 @@ public class OrderItemController {
             item.setUnitPrice(new java.math.BigDecimal(Double.toString(unitPrice)));
             item.setOrderId(orderId);
             item.setProductId(productId);
-            
+
             // Recalculate total price
-            java.math.BigDecimal totalPrice = new java.math.BigDecimal(Double.toString(unitPrice)).multiply(java.math.BigDecimal.valueOf(quantity));
+            java.math.BigDecimal totalPrice = new java.math.BigDecimal(Double.toString(unitPrice))
+                    .multiply(java.math.BigDecimal.valueOf(quantity));
             item.setTotalPrice(totalPrice);
 
             this.orderItems.save(item);

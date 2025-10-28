@@ -16,12 +16,15 @@ import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api")
 public class ProductController {
 
+    private static final Logger logger = LoggerFactory.getLogger(ProductController.class);
     private ProductRepo products;
     private com.example.guitarapi.repository.OrderItemRepo orderItemRepo;
 
@@ -35,7 +38,7 @@ public class ProductController {
         try {
             return this.products.findDistinctBrands();
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Failed to fetch product brands", e);
             return java.util.Collections.emptyList();
         }
     }
@@ -45,7 +48,7 @@ public class ProductController {
         try {
             return this.products.findDistinctCategories();
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Failed to fetch product categories", e);
             return java.util.Collections.emptyList();
         }
     }
@@ -61,15 +64,17 @@ public class ProductController {
     }
 
     @RequestMapping(path = "/products/{id}", method = RequestMethod.DELETE)
-    public org.springframework.http.ResponseEntity<Object> deleteProduct(@PathVariable int id, @RequestParam(value = "force", required = false) Boolean force) {
-        System.out.println("Attempting to delete product id=" + id + " force=" + force);
+    public org.springframework.http.ResponseEntity<Object> deleteProduct(@PathVariable int id,
+            @RequestParam(value = "force", required = false) Boolean force) {
+        logger.info("Attempting to delete product id={} force={}", id, force);
         try {
             if (Boolean.TRUE.equals(force)) {
                 // remove dependent order items first
                 try {
                     this.orderItemRepo.deleteByProductId(id);
                 } catch (Exception ex) {
-                    // log but continue to attempt delete; will fail if DB enforces constraints differently
+                    // log but continue to attempt delete; will fail if DB enforces constraints
+                    // differently
                     ex.printStackTrace();
                 }
             }
@@ -79,47 +84,44 @@ public class ProductController {
         } catch (org.springframework.dao.EmptyResultDataAccessException e) {
             // No such id
             java.util.Map<String, Object> body = java.util.Map.of(
-                "message", "Product not found",
-                "exception", e.getClass().getSimpleName()
-            );
+                    "message", "Product not found",
+                    "exception", e.getClass().getSimpleName());
             return org.springframework.http.ResponseEntity.status(404).body(body);
         } catch (org.springframework.dao.DataIntegrityViolationException e) {
             // Likely foreign key constraint (referenced by orders)
-            e.printStackTrace();
+            logger.error("Data integrity violation while deleting product {}", id, e);
             java.util.Map<String, Object> body = java.util.Map.of(
-                "message", "Cannot delete product: it is referenced by other records",
-                "exception", e.getClass().getSimpleName(),
-                "cause", e.getMostSpecificCause() != null ? e.getMostSpecificCause().toString() : ""
-            );
+                    "message", "Cannot delete product: it is referenced by other records",
+                    "exception", e.getClass().getSimpleName(),
+                    "cause", e.getMostSpecificCause() != null ? e.getMostSpecificCause().toString() : "");
             return org.springframework.http.ResponseEntity.status(409).body(body);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Failed to delete product {}", id, e);
             java.util.Map<String, Object> body = java.util.Map.of(
-                "message", "Failed to delete product: " + e.getMessage(),
-                "exception", e.getClass().getSimpleName(),
-                "cause", e.getCause() != null ? e.getCause().toString() : ""
-            );
+                    "message", "Failed to delete product: " + e.getMessage(),
+                    "exception", e.getClass().getSimpleName(),
+                    "cause", e.getCause() != null ? e.getCause().toString() : "");
             return org.springframework.http.ResponseEntity.status(500).body(body);
         }
     }
 
     @RequestMapping(path = "/products/{id}/force-delete", method = RequestMethod.DELETE)
     public org.springframework.http.ResponseEntity<Object> forceDeleteProduct(@PathVariable int id) {
-        System.out.println("Force-deleting product id=" + id + " (removing order items first)");
+        logger.info("Force-deleting product id={} (removing order items first)", id);
         try {
             // Remove order items referencing this product
             this.orderItemRepo.deleteByProductId(id);
             // Now delete product
             this.products.deleteById(id);
-            java.util.Map<String, Object> ok = java.util.Map.of("message", "Product force-deleted and related order items removed");
+            java.util.Map<String, Object> ok = java.util.Map.of("message",
+                    "Product force-deleted and related order items removed");
             return org.springframework.http.ResponseEntity.ok(ok);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Failed to force-delete product {}", id, e);
             java.util.Map<String, Object> body = java.util.Map.of(
-                "message", "Failed to force-delete product: " + e.getMessage(),
-                "exception", e.getClass().getSimpleName(),
-                "cause", e.getCause() != null ? e.getCause().toString() : ""
-            );
+                    "message", "Failed to force-delete product: " + e.getMessage(),
+                    "exception", e.getClass().getSimpleName(),
+                    "cause", e.getCause() != null ? e.getCause().toString() : "");
             return org.springframework.http.ResponseEntity.status(500).body(body);
         }
     }
@@ -134,12 +136,12 @@ public class ProductController {
             @RequestParam("stock_quantity") int stockQuantity,
             @RequestParam(value = "images", required = false) MultipartFile images) {
 
-         try {
-             // Set upload directory
-             Path uploadDir = Paths.get(System.getProperty("user.dir"), "uploads");
-             if (!Files.exists(uploadDir)) {
-                 Files.createDirectories(uploadDir);
-             }
+        try {
+            // Set upload directory
+            Path uploadDir = Paths.get(System.getProperty("user.dir"), "uploads");
+            if (!Files.exists(uploadDir)) {
+                Files.createDirectories(uploadDir);
+            }
             String imageFileName = null;
             // Save image file if provided
             if (images != null && !images.isEmpty()) {
@@ -149,13 +151,14 @@ public class ProductController {
             }
 
             // Save product with image filename (can be null)
-            Products newProduct = new Products(0, brand, category, LocalDateTime.now(), description, imageFileName, name, new java.math.BigDecimal(Double.toString(price)), stockQuantity, LocalDateTime.now());
-             this.products.save(newProduct);
-             return "Product Inserted Successfully!";
-         } catch (Exception e) {
-             e.printStackTrace();
-             return "Failed to Insert Product!";
-         }
+            Products newProduct = new Products(0, brand, category, LocalDateTime.now(), description, imageFileName,
+                    name, new java.math.BigDecimal(Double.toString(price)), stockQuantity, LocalDateTime.now());
+            this.products.save(newProduct);
+            return "Product Inserted Successfully!";
+        } catch (Exception e) {
+            logger.error("Failed to insert product", e);
+            return "Failed to Insert Product!";
+        }
     }
 
     @RequestMapping(path = "/products/{id}", method = RequestMethod.PUT)
@@ -176,7 +179,7 @@ public class ProductController {
             item.setName(name);
             item.setPrice(new java.math.BigDecimal(Double.toString(price)));
             item.setStockQuantity(stockQuantity);
-            
+
             // Update timestamp
             item.setUpdatedAt(LocalDateTime.now());
 
@@ -191,7 +194,7 @@ public class ProductController {
                     images.transferTo(target.toFile());
                     item.setImages(imageFileName);
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    logger.error("Failed to update product image", e);
                     return "Failed to update image!";
                 }
             }

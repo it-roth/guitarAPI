@@ -15,12 +15,15 @@ import java.nio.file.Paths;
 import java.nio.file.Path;
 import java.util.List;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api")
 public class UserController {
 
+    private static final Logger logger = LoggerFactory.getLogger(UserController.class);
     private UserRepo users;
 
     public UserController(UserRepo users) {
@@ -45,47 +48,50 @@ public class UserController {
 
     @RequestMapping(path = "/users", method = RequestMethod.POST)
     public String createUser(
-        @RequestParam("first_name") String firstName,
-        @RequestParam("last_name") String lastName,
-        @RequestParam("password") String password,
-        @RequestParam("email") String email,
-        @RequestParam("gender") char gender,
-        @RequestParam(value = "role", required = false) String role,
-        @RequestParam("images") MultipartFile images) {
+            @RequestParam("first_name") String firstName,
+            @RequestParam("last_name") String lastName,
+            @RequestParam("password") String password,
+            @RequestParam("email") String email,
+            @RequestParam("gender") char gender,
+            @RequestParam(value = "role", required = false) String role,
+            @RequestParam("images") MultipartFile images) {
 
-         try {
-             // Set upload directory
-             Path uploadDir = Paths.get(System.getProperty("user.dir"), "uploads");
-             if (!Files.exists(uploadDir)) {
-                 Files.createDirectories(uploadDir);
-                 
-             }
-             // Save image file
-             String imageFileName = images.getOriginalFilename();
-             Path target = uploadDir.resolve(imageFileName);
-             images.transferTo(target.toFile());
-             // Get current timestamp
-             String currentTime = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-             // Save user with image filename
-             Users newObj = new Users(0, firstName, lastName, gender, email, password, imageFileName, null, role, currentTime, currentTime);
-             this.users.save(newObj);
-             return "Inserted Successfully!";
-         } catch (Exception e) {
-             e.printStackTrace();
-             return "Failed to Insert!";
-         }
+        try {
+            // Set upload directory
+            Path uploadDir = Paths.get(System.getProperty("user.dir"), "uploads");
+            if (!Files.exists(uploadDir)) {
+                Files.createDirectories(uploadDir);
+
+            }
+            // Save image file
+            String imageFileName = images.getOriginalFilename();
+            Path target = uploadDir.resolve(imageFileName);
+            images.transferTo(target.toFile());
+            // Get current timestamp
+            String currentTime = java.time.LocalDateTime.now()
+                    .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            // Save user with image filename
+            Users newObj = new Users(0, firstName, lastName, gender, email, password, imageFileName, null, role,
+                    currentTime, currentTime);
+            this.users.save(newObj);
+            return "Inserted Successfully!";
+        } catch (Exception e) {
+            logger.error("Failed to insert user", e);
+            return "Failed to Insert!";
+        }
     }
 
     @RequestMapping(path = "/users/{id}", method = RequestMethod.PUT)
     public String updateUser(
             @PathVariable int id,
-        @RequestParam("first_name") String firstName,
-        @RequestParam("last_name") String lastName,
-        @RequestParam("password") String password,
-        @RequestParam("email") String email,
-        @RequestParam(value = "gender", required = false) String gender,
-        @RequestParam(value = "role", required = false) String role,
-        @RequestParam(value = "images", required = false) MultipartFile images) {
+            @RequestParam("first_name") String firstName,
+            @RequestParam("last_name") String lastName,
+            @RequestParam(value = "password", required = false) String password,
+            @RequestParam(value = "old_password", required = false) String oldPassword,
+            @RequestParam("email") String email,
+            @RequestParam(value = "gender", required = false) String gender,
+            @RequestParam(value = "role", required = false) String role,
+            @RequestParam(value = "images", required = false) MultipartFile images) {
 
         try {
             return this.users.findById(id).map((item) -> {
@@ -95,11 +101,19 @@ public class UserController {
                     item.setGender(gender.charAt(0));
                 }
                 item.setEmail(email);
-                // Only update the password if a non-empty value was provided
+
+                // Validate old password before updating to new password
                 if (password != null && !password.isEmpty()) {
+                    if (oldPassword == null || oldPassword.isEmpty()) {
+                        return "Old password is required to change password";
+                    }
+                    if (!item.getPassword().equals(oldPassword)) {
+                        return "Old password is incorrect";
+                    }
                     item.setPassword(password);
                 }
-                if (role != null) item.setRole(role);
+                if (role != null)
+                    item.setRole(role);
 
                 if (images != null && !images.isEmpty()) {
                     try {
@@ -112,20 +126,21 @@ public class UserController {
                         images.transferTo(target.toFile());
                         item.setImages(imageFileName);
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        logger.error("Failed to update user image", e);
                         return "Failed to update image: " + e.getMessage();
                     }
                 }
 
                 // Update timestamp
-                String currentTime = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                String currentTime = java.time.LocalDateTime.now()
+                        .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
                 item.setUpdatedAt(currentTime);
 
                 this.users.save(item);
                 return "Updated Successfully!";
             }).orElse("User not found!");
         } catch (Exception ex) {
-            ex.printStackTrace();
+            logger.error("Failed to update user", ex);
             return "Failed to update user: " + ex.getMessage();
         }
     }
